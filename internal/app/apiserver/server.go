@@ -44,7 +44,7 @@ func (s *server) configureRouter() {
 	s.router.Use(s.setContentType)
 	s.router.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
 
-	s.router.HandleFunc("/", s.handleDefaultRequest()).Methods(http.MethodGet)
+	s.router.HandleFunc("/", s.handleDefaultRequest()).Methods(http.MethodPost)
 }
 
 func (s *server) setContentType(next http.Handler) http.Handler {
@@ -55,14 +55,40 @@ func (s *server) setContentType(next http.Handler) http.Handler {
 }
 
 func (s *server) handleDefaultRequest() http.HandlerFunc {
-	type response struct {
-		Status string `json:"status"`
+	type chat struct {
+		Id       int64  `json:"id"`
+		Type     string `json:"type"`
+		Username string `json:"username"`
+	}
+	type message struct {
+		Id   int    `json:"message_id"`
+		Text string `json:"text"`
+		Chat chat   `json:"chat"`
+	}
+
+	type request struct {
+		UpdateId int     `json:"update_id"`
+		Message  message `json:"message"`
+		Chat     chat    `json:"chat"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.respond(w, http.StatusOK, &response{
-			Status: http.StatusText(http.StatusOK),
-		})
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, http.StatusBadRequest, err)
+			return
+		}
+
+		s.logger.WithFields(logrus.Fields{
+			"update-id":     req.UpdateId,
+			"message-id":    req.Message.Id,
+			"message":       req.Message.Text,
+			"chat-id":       req.Message.Chat.Id,
+			"chat-type":     req.Message.Chat.Type,
+			"chat-username": req.Message.Chat.Username,
+		}).Debug("request received")
+
+		s.respond(w, http.StatusOK, http.StatusText(http.StatusOK))
 	}
 }
 
