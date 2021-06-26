@@ -12,6 +12,6 @@ func Start(config *Config, logger *logrus.Logger) error {
 		"log-level": config.LogLevel,
 	}).Info("server starting")
 
-	srv := newServer()
+	srv := newServer(logger)
 	return http.ListenAndServe(config.BindAddr, srv)
 }
